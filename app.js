@@ -70,6 +70,11 @@ async function bioKek(id, prfSalt){ const a = await navigator.credentials.get({p
 /* ---------- Estado ---------- */
 let meta = null, dek = null, docs = [], view = {name:'list'}, hist = [], filter = 'all', query = '', searchOpen = false, focusQ = false, unlocked = false, revealed = null, revealTimer = null, draft = null, bioOK = false, hiddenAt = 0, lastAct = Date.now(), picking = false, confirmRes = null, promptRes = null, pendingKey = null;
 const pad = {buf:'', busy:false, onDone:null};
+const APP_VERSION = 2;
+let installEvt = null;
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (unlocked && view.name === 'settings') render(); });
+window.addEventListener('appinstalled', () => { installEvt = null; toast('Bóveda instalada'); if (unlocked && view.name === 'settings') render(); });
 
 function toast(m){ const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2800); }
 function openOverlay(html, cls){ ov.className = cls; ov.innerHTML = html; ov.hidden = false; document.body.style.overflow = 'hidden'; }
@@ -203,11 +208,12 @@ function viewSettings(){ const bio = !!meta.bio;
   ${bioOK?`<button class="set-row" data-act="toggleBio" role="switch" aria-checked="${bio}"><span>Abrir con huella<small>También se pide para ver números completos</small></span><span class="sw ${bio?'on':''}"></span></button>`:`<p class="fine">Este navegador no permite usar la huella. La app usa tu PIN.</p>`}
   <button class="set-row" data-act="changePin"><span>Cambiar PIN</span><span class="chev">${ic('chev',18)}</span></button>
   <button class="set-row" data-act="lockNow"><span>Bloquear ahora</span><span class="chev">${ic('lock',18)}</span></button></div>
+  <h2 class="section">Instalación</h2><div class="rows">${isStandalone()?`<p class="fine">Ya estás usando la app instalada.</p>`:installEvt?`<button class="set-row" data-act="install"><span>Instalar Bóveda en el celular<small>Queda como una app con su propio ícono</small></span><span class="chev">${ic('down',18)}</span></button>`:`<p class="fine">Chrome todavía no ofrece instalarla. Abre la app en Chrome con internet, espera unos segundos y vuelve a entrar aquí.</p>`}</div>
   <h2 class="section">Copia de seguridad</h2><div class="rows">
   <button class="set-row" data-act="exportBk"><span>Descargar copia cifrada<small>Solo se puede abrir con tu PIN actual</small></span><span class="chev">${ic('down',18)}</span></button>
   <label class="set-row" data-pick><span>Restaurar una copia<small>Te pedirá el PIN que tenías al hacerla</small></span><span class="chev">${ic('up',18)}</span><input type="file" accept="application/json,.json" data-import hidden></label></div>
   <h2 class="section">Privacidad</h2><div class="rows"><p class="fine">Tus documentos y fotos se guardan cifrados solo en este celular. La app no se conecta a internet para nada: no envía ni recibe datos.</p><p class="fine">Los avisos de vencimiento aparecen al abrir la app. La app se bloquea sola si sales de ella o la dejas de usar unos minutos.</p></div>
-  <button class="btn btn-danger-text mt" data-act="wipe">Borrar todos los documentos</button>`; }
+  <button class="btn btn-danger-text mt" data-act="wipe">Borrar todos los documentos</button><p class="fine">Versión ${APP_VERSION}</p>`; }
 function render(){ if (!unlocked) return;
   main.innerHTML = ({list:viewList, detail:viewDetail, form:viewForm, settings:viewSettings}[view.name] || viewList)();
   if (focusQ){ focusQ = false; const q = $('#q'); if (q) q.focus(); } }
@@ -262,6 +268,7 @@ const A = {
     newPinFlow(ov, async pin => { const salt = b64(rnd(16)); const w = await wrap(k, await pinKey(pin, salt, ITER));
       meta.salt = salt; meta.iter = ITER; meta.pin = w; await DB.put('meta', meta); closeOverlay(); toast('PIN actualizado'); }, true); },
   lockNow(){ lock(); },
+  async install(){ if (!installEvt) return; const e = installEvt; installEvt = null; try { await e.prompt(); await e.userChoice; } catch(err){} render(); },
   async exportBk(){ const data = {app:'mis-documentos', v:1, created:new Date().toISOString(), salt:meta.salt, iter:meta.iter, pin:meta.pin, docs:await DB.all('docs')};
     const url = URL.createObjectURL(new Blob([JSON.stringify(data)], {type:'application/json'})), a = document.createElement('a');
     a.href = url; a.download = `mis-documentos-copia-${new Date().toISOString().slice(0,10)}.json`; document.body.appendChild(a); a.click(); a.remove();
