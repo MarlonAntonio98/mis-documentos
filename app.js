@@ -126,7 +126,7 @@ function renderLock(){
   unlocked = false;
   if (!meta) return newPinFlow(main, setupKeys, false);
   const bio = !!meta.bio && bioOK;
-  main.innerHTML = padHTML('Mis documentos', bio ? 'Desbloquea con tu huella o tu PIN.' : 'Ingresa tu PIN.', bio, `<button class="btn-link" data-act="forgot">Olvidé mi PIN</button>`);
+  main.innerHTML = padHTML('Bóveda', bio ? 'Desbloquea con tu huella o tu PIN.' : 'Ingresa tu PIN.', bio, `<button class="btn-link" data-act="forgot">Olvidé mi PIN</button>`);
   newPad(async p => { try { dek = await verifyPin(p, false); await afterUnlock(); return true; } catch(e){ setSub(e.msg || 'PIN incorrecto.'); return false; } }); }
 async function afterUnlock(){
   pendingKey = null; unlocked = true; lastAct = Date.now(); docs = []; let bad = 0;
@@ -321,6 +321,7 @@ setInterval(() => { if (unlocked && !picking && Date.now() - lastAct > LOCK_IDLE
 
 /* ---------- Inicio ---------- */
 (async () => {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', {scope:'./'}).catch(() => {});
   if (!window.isSecureContext || !crypto.subtle || !window.indexedDB){ main.innerHTML = `<div class="fatal"><h1>No se puede abrir</h1><p>Abre la app desde su dirección https en Chrome o Safari.</p></div>`; return; }
   bioOK = await bioSupported();
   if (!await DB.open()){ main.innerHTML = `<div class="fatal"><h1>No se puede guardar</h1><p>Este navegador no permite guardar datos. Si estás en modo incógnito, ábrela en una pestaña normal.</p></div>`; return; }

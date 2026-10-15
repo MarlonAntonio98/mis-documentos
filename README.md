@@ -1,4 +1,4 @@
-# Mis documentos
+# Bóveda
 
 App personal para guardar documentos (DUI, pasaporte, licencia, etc.) con fotos, fechas y avisos de vencimiento. Funciona en el navegador del celular y se puede agregar a la pantalla de inicio.
 
@@ -8,7 +8,11 @@ App personal para guardar documentos (DUI, pasaporte, licencia, etc.) con fotos,
 2. Sube todos los archivos de esta carpeta a la raíz del repositorio.
 3. En el repositorio ve a **Settings → Pages**, elige la rama `main` y la carpeta `/ (root)`, y guarda.
 4. Abre en el celular la dirección que te da GitHub (`https://tu-usuario.github.io/mis-documentos/`).
-5. En el menú del navegador elige **Agregar a pantalla de inicio** para usarla como app.
+5. En Chrome toca el menú de tres puntos y elige **Instalar app**.
+
+## Actualizar la app
+
+La app funciona sin internet porque guarda una copia de sí misma en el celular. Si algún día cambias un archivo, abre `sw.js` y sube el número de `VERSION` (por ejemplo, de `boveda-v1` a `boveda-v2`). La próxima vez que abras la app con internet, descargará la versión nueva. Tus documentos no se tocan.
 
 ## Cómo protege tus datos
 
