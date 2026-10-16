@@ -8,7 +8,7 @@ const PIN_LEN = 6, ITER = 600000, LOCK_HIDDEN_MS = 30000, LOCK_PICKING_MS = 3000
 const CATS = {identidad:'Identidad',vehiculo:'Vehículo',salud:'Salud',estudios:'Estudios',finanzas:'Finanzas',trabajo:'Trabajo',otros:'Otros'};
 const SUG = {'DUI':['identidad',60],'Pasaporte':['identidad',120],'Partida de nacimiento':['identidad',30],'Licencia de conducir':['vehiculo',60],'Tarjeta de circulación':['vehiculo',30],'Carné del ISSS':['salud',30],'Carné de vacunación':['salud',30],'Título universitario':['estudios',30],'Póliza de seguro':['finanzas',30],'Contrato de trabajo':['trabajo',30]};
 const WARNS = [15,30,60,90,120,180];
-const I = {plus:'<path d="M12 5v14M5 12h14"/>',search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',back:'<path d="m15 6-6 6 6 6"/>',eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',eyeoff:'<path d="M3 3l18 18"/><path d="M10.6 6.1A10 10 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.8M6.6 7.6C3.8 9.4 2 12 2 12s3.5 6 10 6a10 10 0 0 0 4.4-1"/>',finger:'<path d="M12 11v3a8 8 0 0 1-1.5 4.5"/><path d="M8 8.5a4.5 4.5 0 0 1 8.5 2V13a12 12 0 0 1-.8 4.3"/><path d="M5 12a7 7 0 0 1 12-5"/><path d="M8.5 13v1a5 5 0 0 1-1.3 3.3"/><path d="M19.5 10.5V13a15 15 0 0 1-.4 3"/>',edit:'<path d="M4 20h4L19 9l-4-4L4 16v4z"/>',gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',share:'<path d="M12 3v12M7 8l5-5 5 5M5 14v6h14v-6"/>',lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',x:'<path d="M6 6l12 12M18 6 6 18"/>',chev:'<path d="m9 6 6 6-6 6"/>',down:'<path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>',up:'<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>'};
+const I = {plus:'<path d="M12 5v14M5 12h14"/>',search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',back:'<path d="m15 6-6 6 6 6"/>',eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',eyeoff:'<path d="M3 3l18 18"/><path d="M10.6 6.1A10 10 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.8M6.6 7.6C3.8 9.4 2 12 2 12s3.5 6 10 6a10 10 0 0 0 4.4-1"/>',finger:'<path d="M12 11v3a8 8 0 0 1-1.5 4.5"/><path d="M8 8.5a4.5 4.5 0 0 1 8.5 2V13a12 12 0 0 1-.8 4.3"/><path d="M5 12a7 7 0 0 1 12-5"/><path d="M8.5 13v1a5 5 0 0 1-1.3 3.3"/><path d="M19.5 10.5V13a15 15 0 0 1-.4 3"/>',edit:'<path d="M4 20h4L19 9l-4-4L4 16v4z"/>',gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',share:'<path d="M12 3v12M7 8l5-5 5 5M5 14v6h14v-6"/>',lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',x:'<path d="M6 6l12 12M18 6 6 18"/>',chev:'<path d="m9 6 6 6-6 6"/>',copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',down:'<path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>',up:'<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>'};
 const ic = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -70,7 +70,8 @@ async function bioKek(id, prfSalt){ const a = await navigator.credentials.get({p
 /* ---------- Estado ---------- */
 let meta = null, dek = null, docs = [], view = {name:'list'}, hist = [], filter = 'all', query = '', searchOpen = false, focusQ = false, unlocked = false, revealed = null, revealTimer = null, draft = null, bioOK = false, hiddenAt = 0, lastAct = Date.now(), picking = false, confirmRes = null, promptRes = null, pendingKey = null;
 const pad = {buf:'', busy:false, onDone:null};
-const APP_VERSION = 3;
+const APP_VERSION = 5;
+let clipTimer = null;
 let bioBusy = false;
 function autoBio(){ if (!unlocked && meta && meta.bio && bioOK && !bioBusy && document.visibilityState === 'visible' && $('[data-act="bio"]')) A.bio(); }
 let installEvt = null;
@@ -185,7 +186,7 @@ function viewDetail(){ const d = cur(); if (!d){ view = {name:'list'}; return vi
   ${s.k==='warn'?`<div class="note note-warn">${esc(s.t)}. Es buen momento para empezar el trámite.</div>`:s.k==='bad'?`<div class="note note-bad">Este documento ya venció.</div>`:''}
   <div class="photos">${photo('front','Frente')}${photo('back','Reverso')}</div>
   <dl class="rows">
-  ${d.num?`<div class="row"><dt>Número</dt><dd><span>${esc(shown?d.num:mask(d.num))}</span><button class="mini" data-act="reveal" aria-label="${shown?'Ocultar número':'Ver número completo'}">${ic(shown?'eyeoff':'eye',18)}</button></dd></div>`:''}
+  ${d.num?`<div class="row"><dt>Número</dt><dd><span>${esc(shown?d.num:mask(d.num))}</span>${shown?`<button class="mini" data-act="copyNum" aria-label="Copiar número">${ic('copy',18)}</button>`:''}<button class="mini" data-act="reveal" aria-label="${shown?'Ocultar número':'Ver número completo'}">${ic(shown?'eyeoff':'eye',18)}</button></dd></div>`:''}
   ${d.issued?row('Emitido', fmtD(d.issued)):''}${d.exp?row('Vence', fmtD(d.exp)):''}${d.exp?row('Aviso', `${d.warn} días antes`):''}${d.loc?row('Dónde está el original', d.loc):''}${d.notes?row('Notas', d.notes, true):''}
   ${!d.num&&!d.issued&&!d.exp&&!d.loc&&!d.notes?row('Detalles','Sin datos todavía'):''}
   </dl><button class="btn btn-danger-text" data-act="delete">Eliminar documento</button>`; }
@@ -251,6 +252,10 @@ const A = {
   async share(){ const d = cur(); if (!d) return; const files = [];
     for (const s of ['front','back']) if (d[s]) files.push(new File([d2b(d[s])], `${d.name} ${s==='front'?'frente':'reverso'}.jpg`, {type:'image/jpeg'}));
     try { if (navigator.canShare && navigator.canShare({files})) await navigator.share({files, title:d.name}); else toast('Tu navegador no permite compartir fotos desde aquí.'); } catch(e){ if (e && e.name !== 'AbortError') toast('No se pudo compartir.'); } },
+  async copyNum(){ const d = cur(); if (!d || revealed !== d.id || !d.num) return;
+    try { await navigator.clipboard.writeText(d.num); toast('Número copiado. Se borrará del portapapeles en 1 minuto.');
+      clearTimeout(clipTimer); clipTimer = setTimeout(() => { if (document.hasFocus()) navigator.clipboard.writeText('').catch(() => {}); }, 60000);
+    } catch(e){ toast('No se pudo copiar el número.'); } },
   closeViewer(){ closeOverlay(); },
   confirmOk(){ closeOverlay(); if (confirmRes){ confirmRes(true); confirmRes = null; } },
   confirmNo(){ closeOverlay(); if (confirmRes){ confirmRes(false); confirmRes = null; } },
