@@ -70,7 +70,8 @@ async function bioKek(id, prfSalt){ const a = await navigator.credentials.get({p
 /* ---------- Estado ---------- */
 let meta = null, dek = null, docs = [], view = {name:'list'}, hist = [], filter = 'all', query = '', searchOpen = false, focusQ = false, unlocked = false, revealed = null, revealTimer = null, draft = null, bioOK = false, hiddenAt = 0, lastAct = Date.now(), picking = false, confirmRes = null, promptRes = null, pendingKey = null;
 const pad = {buf:'', busy:false, onDone:null};
-const APP_VERSION = 5;
+const APP_VERSION = 6;
+let front = 0, swipe = null, swipedAt = 0, wheelAt = 0;
 let clipTimer = null;
 let bioBusy = false;
 function autoBio(){ if (!unlocked && meta && meta.bio && bioOK && !bioBusy && document.visibilityState === 'visible' && $('[data-act="bio"]')) A.bio(); }
@@ -159,13 +160,20 @@ function back(){ view = hist.pop() || {name:'list'}; render(); window.scrollTo(0
 const cur = () => docs.find(d => d.id === view.id);
 
 /* ---------- Vistas ---------- */
-function cardHTML(d, big){ const s = status(d), tag = big ? 'div' : 'button';
-  return `<${tag} class="card c-${d.cat}" ${big?'':`data-open="${esc(d.id)}" aria-label="${esc(d.name)}. ${esc(s.t)}"`}><div class="card-top"><div><span class="card-cat">${esc(CATS[d.cat])}</span><span class="card-name">${esc(d.name)}</span></div><span class="pill pill-${s.k}"><i></i>${esc(s.t)}</span></div><div class="card-bottom"><span class="card-num">${esc(mask(d.num))}</span><span>${d.exp?'Vence '+esc(fmtD(d.exp)):''}</span></div></${tag}>`; }
+function cardHTML(d, big, extra){ const s = status(d), tag = big ? 'div' : 'button';
+  return `<${tag} class="card c-${d.cat}${extra?' '+extra:''}" ${big?'':`data-open="${esc(d.id)}" aria-label="${esc(d.name)}. ${esc(s.t)}"`}><div class="card-top"><div><span class="card-cat">${esc(CATS[d.cat])}</span><span class="card-name">${esc(d.name)}</span></div><span class="pill pill-${s.k}"><i></i>${esc(s.t)}</span></div><div class="card-bottom"><span class="card-num">${esc(mask(d.num))}</span><span>${d.exp?'Vence '+esc(fmtD(d.exp)):''}</span></div></${tag}>`; }
 function filtered(){ let l = sorted(docs);
   if (filter === 'att') l = l.filter(isAtt); else if (filter !== 'all') l = l.filter(d => d.cat === filter);
   const q = norm(query.trim()); if (q) l = l.filter(d => norm([d.name, d.num, CATS[d.cat], d.loc, d.notes].join(' ')).includes(q));
   return l; }
-function stackHTML(){ const l = filtered(); return l.length ? `<div class="stack">${l.map(d => cardHTML(d)).join('')}</div>` : `<p class="empty-sm">No hay documentos que coincidan.</p>`; }
+function stackHTML(){ const l = filtered(), n = l.length; if (!n) return `<p class="empty-sm">No hay documentos que coincidan.</p>`;
+  if (front >= n) front = 0; const order = []; for (let i = n - 1; i >= 1; i--) order.push(l[(front + i) % n]);
+  return `<div class="stack${n>1?' swipeable':''}">${order.map(d => cardHTML(d)).join('')}${cardHTML(l[front], false, 'front')}</div>`; }
+function fitStack(){ const st = $('.stack'); if (!st) return; const n = st.children.length; if (n < 2) return;
+  const ch = st.clientWidth * 0.6305, top = st.getBoundingClientRect().top + window.scrollY, avail = window.innerHeight - top - ch - 40;
+  st.style.setProperty('--peek', Math.max(26, Math.min(76, avail / (n - 1))) + 'px'); }
+function rotate(dir){ const n = filtered().length; if (n < 2) return; front = (front + dir + n) % n;
+  const w = $('#stackWrap'); if (!w) return; w.innerHTML = stackHTML(); const f = w.querySelector('.card.front'); if (f) f.classList.add('enter'); fitStack(); }
 function viewList(){
   const cats = Object.keys(CATS).filter(k => docs.some(d => d.cat === k)), att = docs.filter(isAtt), bad = att.filter(d => status(d).k === 'bad').length;
   if (filter !== 'all' && filter !== 'att' && !cats.includes(filter)) filter = 'all';
@@ -219,6 +227,7 @@ function viewSettings(){ const bio = !!meta.bio;
   <button class="btn btn-danger-text mt" data-act="wipe">Borrar todos los documentos</button><p class="fine">Versión ${APP_VERSION}</p>`; }
 function render(){ if (!unlocked) return;
   main.innerHTML = ({list:viewList, detail:viewDetail, form:viewForm, settings:viewSettings}[view.name] || viewList)();
+  if (view.name === 'list') fitStack();
   if (focusQ){ focusQ = false; const q = $('#q'); if (q) q.focus(); } }
 
 /* ---------- Imágenes ---------- */
@@ -300,6 +309,7 @@ async function importBk(file){
 
 /* ---------- Eventos ---------- */
 document.addEventListener('click', e => {
+  if (Date.now() - swipedAt < 450 && e.target.closest('.stack')) return;
   if (e.target.closest('[data-pick]')) picking = true;
   const t = e.target.closest('[data-key],[data-act],[data-open],[data-view],[data-cat],[data-filter],[data-rmphoto]'); if (!t) return;
   const ds = t.dataset;
@@ -308,7 +318,7 @@ document.addEventListener('click', e => {
   if (ds.open) return go({name:'detail', id:ds.open});
   if (ds.view){ const d = cur(); if (d && d[ds.view]) openOverlay(`<img src="${d[ds.view]}" alt="" data-act="closeViewer"><button class="viewer-close" data-act="closeViewer" aria-label="Cerrar">${ic('x')}</button>`, 'viewer'); return; }
   if (ds.cat){ draft.cat = ds.cat; draft._catTouched = true; document.querySelectorAll('.cat-opt').forEach(b => b.classList.toggle('on', b === t)); return; }
-  if (ds.filter){ filter = ds.filter; return render(); }
+  if (ds.filter){ filter = ds.filter; front = 0; return render(); }
   if (ds.rmphoto){ draft[ds.rmphoto] = null; return updatePhotoSlot(ds.rmphoto); }
   if (ds.act && A[ds.act]) A[ds.act](t);
 });
@@ -318,13 +328,18 @@ document.addEventListener('change', async e => { const t = e.target; picking = f
   if (t.dataset && t.dataset.import !== undefined){ const f = t.files && t.files[0]; t.value = ''; if (f) importBk(f); }
   if (t.id === 'f_noexp'){ $('#f_exp').disabled = t.checked; $('#warnField').hidden = t.checked; } });
 document.addEventListener('input', e => { const t = e.target;
-  if (t.id === 'q'){ query = t.value; const w = $('#stackWrap'); if (w) w.innerHTML = stackHTML(); }
+  if (t.id === 'q'){ query = t.value; front = 0; const w = $('#stackWrap'); if (w){ w.innerHTML = stackHTML(); fitStack(); } }
   if (t.id === 'f_name'){ $('#e_name').textContent = ''; const key = Object.keys(SUG).find(k => norm(k) === norm(t.value.trim()));
     if (key){ const [c, w] = SUG[key]; if (!draft._catTouched){ draft.cat = c; document.querySelectorAll('.cat-opt').forEach(b => b.classList.toggle('on', b.dataset.cat === c)); } $('#f_warn').value = String(w); } } });
 document.addEventListener('keydown', e => { lastAct = Date.now();
   if (!ov.hidden && e.key === 'Escape'){ if (confirmRes) A.confirmNo(); else if (promptRes) A.cancelPrompt(); else if (ov.classList.contains('viewer')) closeOverlay(); return; }
   if ($('#dots') && (!unlocked || !ov.hidden)){ if (/^[0-9]$/.test(e.key)) padKey(e.key); else if (e.key === 'Backspace') padKey('del'); } });
-document.addEventListener('pointerdown', () => { lastAct = Date.now(); }, {passive:true});
+document.addEventListener('pointerdown', e => { lastAct = Date.now(); swipe = e.target.closest('.stack.swipeable') ? {x:e.clientX, y:e.clientY, t:Date.now()} : null; }, {passive:true});
+document.addEventListener('pointerup', e => { if (!swipe) return; const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y, quick = Date.now() - swipe.t < 900; swipe = null;
+  if (quick && Math.abs(dy) > 35 && Math.abs(dy) > Math.abs(dx) * 1.2){ swipedAt = Date.now(); rotate(dy < 0 ? 1 : -1); } });
+document.addEventListener('pointercancel', () => { swipe = null; });
+document.addEventListener('wheel', e => { if (!e.target.closest('.stack.swipeable')) return; e.preventDefault(); if (Date.now() - wheelAt < 350 || Math.abs(e.deltaY) < 4) return; wheelAt = Date.now(); rotate(e.deltaY > 0 ? 1 : -1); }, {passive:false});
+window.addEventListener('resize', () => { if (unlocked && view.name === 'list') fitStack(); });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden){ hiddenAt = Date.now(); document.body.classList.add('veil'); return; }
   const away = Date.now() - hiddenAt;
