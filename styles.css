@@ -31,10 +31,8 @@ button{font:inherit;color:inherit}
 .card{display:flex;flex-direction:column;justify-content:space-between;width:100%;aspect-ratio:1.586/1;border:0;border-radius:18px;padding:16px 18px;color:#fff;text-align:left;background-color:var(--c);background-image:repeating-radial-gradient(circle at 112% -18%,rgba(255,255,255,.08) 0 1px,transparent 1px 9px);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 -6px 16px rgba(0,0,0,.6);cursor:pointer;position:relative;transition:transform .25s var(--ease)}
 .stack .card+.card{margin-top:calc(var(--peek,76px) - 63.05%)}
 .stack.swipeable{touch-action:none;user-select:none;-webkit-user-select:none}
-.card.enter{animation:front-in .34s var(--ease)}
-@keyframes front-in{from{transform:translateY(-34px) scale(.97);opacity:.55}to{transform:none;opacity:1}}
-.stack .card:active{transform:translateY(-8px)}
-@media (hover:hover){.stack .card:hover{transform:translateY(-6px)}}
+.stack.swipeable .card{will-change:transform;transition:none}
+@media (hover:hover){.stack:not(.swipeable) .card:hover{transform:translateY(-6px)}}
 .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .card-cat{display:block;font-size:12px;font-weight:500;color:rgba(255,255,255,.74)}
 .card-name{display:block;font-size:19px;font-weight:600;letter-spacing:-.01em;line-height:1.25}

@@ -70,8 +70,10 @@ async function bioKek(id, prfSalt){ const a = await navigator.credentials.get({p
 /* ---------- Estado ---------- */
 let meta = null, dek = null, docs = [], view = {name:'list'}, hist = [], filter = 'all', query = '', searchOpen = false, focusQ = false, unlocked = false, revealed = null, revealTimer = null, draft = null, bioOK = false, hiddenAt = 0, lastAct = Date.now(), picking = false, confirmRes = null, promptRes = null, pendingKey = null;
 const pad = {buf:'', busy:false, onDone:null};
-const APP_VERSION = 6;
-let front = 0, swipe = null, swipedAt = 0, wheelAt = 0;
+const APP_VERSION = 7;
+let front = 0, drag = null, dragRaf = 0, swipedAt = 0, wheelAt = 0;
+const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SPRING = 'transform .52s cubic-bezier(.2,1.18,.32,1), filter .52s ease';
 let clipTimer = null;
 let bioBusy = false;
 function autoBio(){ if (!unlocked && meta && meta.bio && bioOK && !bioBusy && document.visibilityState === 'visible' && $('[data-act="bio"]')) A.bio(); }
@@ -172,8 +174,23 @@ function stackHTML(){ const l = filtered(), n = l.length; if (!n) return `<p cla
 function fitStack(){ const st = $('.stack'); if (!st) return; const n = st.children.length; if (n < 2) return;
   const ch = st.clientWidth * 0.6305, top = st.getBoundingClientRect().top + window.scrollY, avail = window.innerHeight - top - ch - 40;
   st.style.setProperty('--peek', Math.max(26, Math.min(76, avail / (n - 1))) + 'px'); }
-function rotate(dir){ const n = filtered().length; if (n < 2) return; front = (front + dir + n) % n;
-  const w = $('#stackWrap'); if (!w) return; w.innerHTML = stackHTML(); const f = w.querySelector('.card.front'); if (f) f.classList.add('enter'); fitStack(); }
+function settle(cards){ cards.forEach(c => { c.style.transition = reduceMotion() ? 'none' : SPRING; c.style.transform = ''; c.style.filter = ''; });
+  setTimeout(() => cards.forEach(c => { if (!c.style.transform) c.style.transition = ''; }), 560); }
+function rotate(dir){ const n = filtered().length, w = $('#stackWrap'); if (n < 2 || !w) return;
+  const before = new Map(); w.querySelectorAll('.card').forEach(c => before.set(c.dataset.open, c.getBoundingClientRect().top));
+  const leaving = w.querySelector('.card.front'), leavingId = leaving && leaving.dataset.open;
+  front = (front + dir + n) % n; w.innerHTML = stackHTML(); fitStack();
+  const cards = [...w.querySelectorAll('.card')];
+  cards.forEach(c => { const b = before.get(c.dataset.open); if (b === undefined) return; const d = b - c.getBoundingClientRect().top;
+    c.style.transition = 'none'; c.style.transform = `translateY(${d}px)` + (c.dataset.open === leavingId && dir > 0 ? ' scale(.97)' : '');
+    if (c.dataset.open === leavingId && dir > 0) c.style.filter = 'brightness(.7)'; });
+  void w.offsetHeight; requestAnimationFrame(() => settle(cards));
+  try { if (navigator.vibrate) navigator.vibrate(8); } catch(e){} }
+const rubber = d => Math.sign(d) * 210 * (1 - Math.exp(-Math.abs(d) / 230));
+function applyDrag(){ dragRaf = 0; if (!drag) return; const cards = drag.cards, n = cards.length, d = rubber(drag.dy);
+  cards.forEach((c, i) => { const k = n - 1 - i, f = d > 0 ? Math.max(0, 1 - k * 0.32) : Math.max(0, 1 - k * 0.5);
+    const sc = k === 0 ? 1 - Math.min(0.035, Math.abs(d) / 5000) : 1;
+    c.style.transform = `translateY(${(d * f).toFixed(1)}px) scale(${sc.toFixed(4)})`; }); }
 function viewList(){
   const cats = Object.keys(CATS).filter(k => docs.some(d => d.cat === k)), att = docs.filter(isAtt), bad = att.filter(d => status(d).k === 'bad').length;
   if (filter !== 'all' && filter !== 'att' && !cats.includes(filter)) filter = 'all';
@@ -334,10 +351,18 @@ document.addEventListener('input', e => { const t = e.target;
 document.addEventListener('keydown', e => { lastAct = Date.now();
   if (!ov.hidden && e.key === 'Escape'){ if (confirmRes) A.confirmNo(); else if (promptRes) A.cancelPrompt(); else if (ov.classList.contains('viewer')) closeOverlay(); return; }
   if ($('#dots') && (!unlocked || !ov.hidden)){ if (/^[0-9]$/.test(e.key)) padKey(e.key); else if (e.key === 'Backspace') padKey('del'); } });
-document.addEventListener('pointerdown', e => { lastAct = Date.now(); swipe = e.target.closest('.stack.swipeable') ? {x:e.clientX, y:e.clientY, t:Date.now()} : null; }, {passive:true});
-document.addEventListener('pointerup', e => { if (!swipe) return; const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y, quick = Date.now() - swipe.t < 900; swipe = null;
-  if (quick && Math.abs(dy) > 35 && Math.abs(dy) > Math.abs(dx) * 1.2){ swipedAt = Date.now(); rotate(dy < 0 ? 1 : -1); } });
-document.addEventListener('pointercancel', () => { swipe = null; });
+document.addEventListener('pointerdown', e => { lastAct = Date.now(); const st = e.target.closest('.stack.swipeable');
+  drag = st && e.isPrimary ? {x0:e.clientX, y0:e.clientY, dy:0, v:0, ly:e.clientY, lt:performance.now(), active:false, cards:[...st.querySelectorAll('.card')]} : null; }, {passive:true});
+document.addEventListener('pointermove', e => { if (!drag || !e.isPrimary) return; const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+  if (!drag.active){ if (Math.abs(dy) < 7) return; if (Math.abs(dx) > Math.abs(dy)){ drag = null; return; } drag.active = true; drag.cards.forEach(c => { c.style.transition = 'none'; }); }
+  const t = performance.now(); if (t > drag.lt){ drag.v = drag.v * 0.4 + ((e.clientY - drag.ly) / (t - drag.lt)) * 0.6; } drag.ly = e.clientY; drag.lt = t;
+  drag.dy = dy; if (!dragRaf) dragRaf = requestAnimationFrame(applyDrag); }, {passive:true});
+function endDrag(cancel){ const d = drag; drag = null; if (!d || !d.active) return; swipedAt = Date.now(); if (dragRaf){ cancelAnimationFrame(dragRaf); dragRaf = 0; }
+  const flick = Math.abs(d.v) > 0.5 && Math.abs(d.dy) > 14 && Math.sign(d.v) === Math.sign(d.dy);
+  if (!cancel && (Math.abs(d.dy) > 48 || flick)) rotate(d.dy < 0 ? 1 : -1);
+  else settle(d.cards); }
+document.addEventListener('pointerup', () => endDrag(false));
+document.addEventListener('pointercancel', () => endDrag(true));
 document.addEventListener('wheel', e => { if (!e.target.closest('.stack.swipeable')) return; e.preventDefault(); if (Date.now() - wheelAt < 350 || Math.abs(e.deltaY) < 4) return; wheelAt = Date.now(); rotate(e.deltaY > 0 ? 1 : -1); }, {passive:false});
 window.addEventListener('resize', () => { if (unlocked && view.name === 'list') fitStack(); });
 document.addEventListener('visibilitychange', () => {
