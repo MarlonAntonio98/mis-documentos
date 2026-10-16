@@ -70,7 +70,9 @@ async function bioKek(id, prfSalt){ const a = await navigator.credentials.get({p
 /* ---------- Estado ---------- */
 let meta = null, dek = null, docs = [], view = {name:'list'}, hist = [], filter = 'all', query = '', searchOpen = false, focusQ = false, unlocked = false, revealed = null, revealTimer = null, draft = null, bioOK = false, hiddenAt = 0, lastAct = Date.now(), picking = false, confirmRes = null, promptRes = null, pendingKey = null;
 const pad = {buf:'', busy:false, onDone:null};
-const APP_VERSION = 2;
+const APP_VERSION = 3;
+let bioBusy = false;
+function autoBio(){ if (!unlocked && meta && meta.bio && bioOK && !bioBusy && document.visibilityState === 'visible' && $('[data-act="bio"]')) A.bio(); }
 let installEvt = null;
 const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (unlocked && view.name === 'settings') render(); });
@@ -253,8 +255,9 @@ const A = {
   confirmOk(){ closeOverlay(); if (confirmRes){ confirmRes(true); confirmRes = null; } },
   confirmNo(){ closeOverlay(); if (confirmRes){ confirmRes(false); confirmRes = null; } },
   cancelPrompt(){ closeOverlay(); if (promptRes){ promptRes(null); promptRes = null; } if (!unlocked && meta) renderLock(); },
-  async bio(){ try { dek = await unwrap(meta.bio.w, await bioKek(meta.bio.id, meta.bio.prfSalt), false); succeeded(); await afterUnlock(); }
-    catch(e){ setSub(e.noprf ? 'Tu huella no pudo descifrar los datos. Usa tu PIN.' : 'No se pudo leer la huella. Usa tu PIN.'); } },
+  async bio(){ if (bioBusy) return; bioBusy = true; try { dek = await unwrap(meta.bio.w, await bioKek(meta.bio.id, meta.bio.prfSalt), false); succeeded(); await afterUnlock(); }
+    catch(e){ setSub(e.noprf ? 'Tu huella no pudo descifrar los datos. Usa tu PIN.' : 'Toca «Usar huella» para intentarlo otra vez o usa tu PIN.'); }
+    finally { bioBusy = false; } },
   async bioOn(){ try { await enableBio(pendingKey); toast('Huella activada'); } catch(e){ meta.bio = null; toast(e.noprf ? 'Tu celular no permite usar la huella para cifrar. Usarás tu PIN.' : 'No se pudo activar la huella. Puedes intentarlo después en Ajustes.'); } await afterUnlock(); },
   async bioSkip(){ await afterUnlock(); },
   async toggleBio(){
@@ -321,7 +324,9 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden){ hiddenAt = Date.now(); document.body.classList.add('veil'); return; }
   const away = Date.now() - hiddenAt;
   if (unlocked && away > (picking ? LOCK_PICKING_MS : LOCK_HIDDEN_MS)) lock();
-  document.body.classList.remove('veil'); });
+  document.body.classList.remove('veil');
+  setTimeout(autoBio, 250); });
+window.addEventListener('pageshow', e => { if (e.persisted) setTimeout(autoBio, 250); });
 window.addEventListener('focus', () => { setTimeout(() => { picking = false; }, 1500); });
 window.addEventListener('pagehide', () => { if (unlocked) lock(); });
 setInterval(() => { if (unlocked && !picking && Date.now() - lastAct > LOCK_IDLE_MS) lock(); }, 10000);
@@ -335,5 +340,6 @@ setInterval(() => { if (unlocked && !picking && Date.now() - lastAct > LOCK_IDLE
   try { meta = await DB.get('meta', 'keys') || null; } catch(e){ meta = null; }
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   renderLock();
+  setTimeout(autoBio, 300);
 })();
 })();
